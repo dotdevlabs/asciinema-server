@@ -10,24 +10,31 @@ defmodule AsciinemaWeb.Api.StreamController do
   @default_index_limit 10
 
   def index(conn, %{"cursor" => cursor} = params) when is_binary(cursor) do
-    {stream_id, prefix} = decode_cursor(cursor)
-    paginate(conn, stream_id, prefix, params["limit"])
+    {stream_id, prefix, order} = decode_cursor(cursor)
+    paginate(conn, stream_id, prefix, params["limit"], order)
   end
 
   def index(conn, params) do
-    paginate(conn, nil, params["prefix"], params["limit"])
+    order = if params["order"] == "desc", do: :desc, else: :asc
+    paginate(conn, nil, params["prefix"], params["limit"], order)
   end
 
-  defp paginate(conn, stream_id, prefix, limit) do
+  defp paginate(conn, stream_id, prefix, limit, order) do
     limit = if limit, do: String.to_integer(limit), else: @default_index_limit
+
+    {sort, paginate_fn} =
+      case order do
+        :desc -> {:id_desc, &Streaming.reverse_cursor_paginate/3}
+        _ -> {:id, &Streaming.cursor_paginate/3}
+      end
 
     result =
       [user_id: conn.assigns.current_user.id, prefix: prefix]
-      |> Streaming.query(:id)
-      |> Streaming.cursor_paginate(stream_id, limit)
+      |> Streaming.query(sort)
+      |> paginate_fn.(stream_id, limit)
 
     conn
-    |> put_pagination_header(result, prefix, limit)
+    |> put_pagination_header(result, prefix, limit, order)
     |> render(:index, streams: result.entries)
   end
 
@@ -112,26 +119,30 @@ defmodule AsciinemaWeb.Api.StreamController do
     end
   end
 
-  defp put_pagination_header(conn, %{has_more: true, last_id: stream_id}, prefix, limit) do
-    cursor = encode_cursor(stream_id, prefix)
+  defp put_pagination_header(conn, %{has_more: true, last_id: stream_id}, prefix, limit, order) do
+    cursor = encode_cursor(stream_id, prefix, order)
     next_url = url(~p"/api/v1/user/streams?cursor=#{cursor}&limit=#{limit}")
     put_resp_header(conn, "link", ~s(<#{next_url}>; rel="next"))
   end
 
-  defp put_pagination_header(conn, _result, _prefix, _params), do: conn
+  defp put_pagination_header(conn, _result, _prefix, _limit, _order), do: conn
 
-  defp encode_cursor(stream_id, prefix) do
-    %{id: stream_id, prefix: prefix}
+  defp encode_cursor(stream_id, prefix, order) do
+    %{id: stream_id, prefix: prefix, order: order}
     |> Jason.encode!()
     |> Base.encode64()
   end
 
   defp decode_cursor(cursor) do
-    %{"id" => stream_id, "prefix" => prefix} =
+    decoded =
       cursor
       |> Base.decode64!()
       |> Jason.decode!()
 
-    {stream_id, prefix}
+    stream_id = decoded["id"]
+    prefix = decoded["prefix"]
+    order = if decoded["order"] == "desc", do: :desc, else: :asc
+
+    {stream_id, prefix, order}
   end
 end

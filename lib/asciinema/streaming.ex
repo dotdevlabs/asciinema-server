@@ -108,6 +108,9 @@ defmodule Asciinema.Streaming do
 
       :id ->
         order_by(q, asc: :id)
+
+      :id_desc ->
+        order_by(q, desc: :id)
     end
   end
 
@@ -120,16 +123,28 @@ defmodule Asciinema.Streaming do
   def cursor_paginate(query, last_id \\ nil, limit \\ 10)
 
   def cursor_paginate(%Ecto.Query{} = query, nil, limit) do
-    do_cursor_paginate(query, limit)
+    do_cursor_paginate(query, limit, :asc)
   end
 
   def cursor_paginate(%Ecto.Query{} = query, last_id, limit) do
     query
     |> where([s], s.id > ^last_id)
-    |> do_cursor_paginate(limit)
+    |> do_cursor_paginate(limit, :asc)
   end
 
-  defp do_cursor_paginate(query, limit) do
+  def reverse_cursor_paginate(query, last_id \\ nil, limit \\ 10)
+
+  def reverse_cursor_paginate(%Ecto.Query{} = query, nil, limit) do
+    do_cursor_paginate(query, limit, :desc)
+  end
+
+  def reverse_cursor_paginate(%Ecto.Query{} = query, last_id, limit) do
+    query
+    |> where([s], s.id < ^last_id)
+    |> do_cursor_paginate(limit, :desc)
+  end
+
+  defp do_cursor_paginate(query, limit, _direction) do
     limit = min(limit, 100)
 
     query =
