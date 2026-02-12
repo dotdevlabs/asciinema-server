@@ -26,7 +26,7 @@ defmodule AsciinemaWeb.Api.StreamJSON do
 
     case latest_recording(stream) do
       nil -> base
-      asciicast -> Map.put(base, :recording_url, url(~p"/a/#{asciicast}.cast"))
+      asciicast -> Map.put(base, :recording_url, url(~p"/a/#{asciicast}") <> ".cast")
     end
   end
 
