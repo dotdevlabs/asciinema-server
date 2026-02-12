@@ -32,7 +32,7 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=raw,value=custom-{{date 'X'}}-{{sha}}
+            type=raw,value=custom-{{sha}}
             type=raw,value=custom
 
       - name: Build and push Docker image
