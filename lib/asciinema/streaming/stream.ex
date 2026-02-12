@@ -38,6 +38,7 @@ defmodule Asciinema.Streaming.Stream do
     timestamps(type: :utc_datetime)
 
     belongs_to :user, Asciinema.Accounts.User
+    has_many :asciicasts, Asciinema.Recordings.Asciicast
   end
 
   defimpl Phoenix.Param do
