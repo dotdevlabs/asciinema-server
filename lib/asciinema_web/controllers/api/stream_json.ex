@@ -13,7 +13,7 @@ defmodule AsciinemaWeb.Api.StreamJSON do
     url = url(~p"/s/#{stream}")
     ws_producer_url = UrlHelpers.ws_producer_url(stream)
 
-    %{
+    base = %{
       id: stream.id,
       url: url,
       ws_producer_url: ws_producer_url,
@@ -23,7 +23,20 @@ defmodule AsciinemaWeb.Api.StreamJSON do
       description: stream.description,
       visibility: stream.visibility
     }
+
+    case latest_recording(stream) do
+      nil -> base
+      asciicast -> Map.put(base, :recording_url, url(~p"/a/#{asciicast}.cast"))
+    end
   end
+
+  defp latest_recording(%{asciicasts: asciicasts}) when is_list(asciicasts) do
+    asciicasts
+    |> Enum.reject(& &1.archived_at)
+    |> Enum.max_by(& &1.id, fn -> nil end)
+  end
+
+  defp latest_recording(_), do: nil
 
   def deleted(_assigns), do: %{}
 

@@ -135,7 +135,7 @@ defmodule Asciinema.Streaming do
     query =
       query
       |> limit(^(limit + 1))
-      |> preload(:user)
+      |> preload([:user, :asciicasts])
 
     entries = Repo.all(query)
 
